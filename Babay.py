@@ -5,22 +5,15 @@ import altair as alt
 import os
 import glob
 from datetime import datetime, timedelta
-
 st.set_page_config(layout="wide", page_title="Автоматична аналітика трафіку")
-
 st.title("📊 Аналітика трафіку вебсайту (автоматичне завантаження даних)")
-
-# --- Функція генерації CSV у файл ---
 def generate_sample_csv_file(filename="sample_data.csv", n_days=10):
     start_date = datetime.today() - timedelta(days=n_days-1)
     dates = [start_date + timedelta(days=i) for i in range(n_days)]
-    
     sources = ['organic', 'direct', 'referral', 'social', 'email']
     devices = ['desktop', 'mobile', 'tablet']
-    
     rows = []
     np.random.seed(42)
-    
     for d in dates:
         for s in sources:
             sessions = max(0, int(np.random.poisson(1000)))
@@ -29,7 +22,6 @@ def generate_sample_csv_file(filename="sample_data.csv", n_days=10):
             bounce_rate = np.clip(0.3 + 0.2 * np.random.rand(), 0, 1)
             avg_session_duration = abs(np.random.normal(120, 30))
             device = np.random.choice(devices, p=[0.55, 0.35, 0.10])
-            
             rows.append({
                 "date": d.strftime("%Y-%m-%d"),
                 "sessions": sessions,
@@ -41,14 +33,11 @@ def generate_sample_csv_file(filename="sample_data.csv", n_days=10):
                 "medium": "organic" if s=="organic" else ("social" if s=="social" else "referral"),
                 "device_category": device
             })
-    
     df = pd.DataFrame(rows)
     df.to_csv(filename, index=False)
     st.info(f"⚠️ Файл {filename} не знайдено — згенеровано прикладні дані")
     return df
-
-# --- Завантаження CSV з автооновленням через кеш ---
-@st.cache_data(ttl=60)  # TTL = 60 секунд, дані оновлюються автоматично
+@st.cache_data(ttl=60)  
 def load_data_auto():
     csv_files = glob.glob("*.csv")
     if csv_files:
@@ -58,10 +47,7 @@ def load_data_auto():
     else:
         df = generate_sample_csv_file()
     return df
-
 df = load_data_auto()
-
-# --- Попередня обробка ---
 df.columns = [c.strip() for c in df.columns]
 if 'date' in df.columns:
     df['date'] = pd.to_datetime(df['date'], errors='coerce')
@@ -73,26 +59,20 @@ for col in ['sessions', 'users', 'pageviews', 'bounce_rate', 'avg_session_durati
     if col not in df.columns:
         df[col] = 0
     df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
-
 for col in ['source', 'device_category']:
     if col not in df.columns:
         df[col] = 'unknown'
-
-# --- Основні показники ---
 st.subheader("Загальні показники")
 st.metric("📅 Період", f"{df['date'].min().date()} — {df['date'].max().date()}")
 st.metric("👥 Унікальні користувачі", f"{df['users'].sum():,}")
 st.metric("📈 Сесії", f"{df['sessions'].sum():,}")
 st.metric("👁️ Перегляди сторінок", f"{df['pageviews'].sum():,}")
-
-# --- Графік відвідуваності ---
 st.subheader("Відвідуваність у часі")
 daily = df.groupby('date').agg({
     'sessions': 'sum',
     'users': 'sum',
     'pageviews': 'sum'
 }).reset_index()
-
 chart = (
     alt.Chart(daily)
     .transform_fold(['sessions', 'users', 'pageviews'], as_=['metric', 'value'])
@@ -107,8 +87,6 @@ chart = (
     .properties(height=350)
 )
 st.altair_chart(chart, use_container_width=True)
-
-# --- Джерела трафіку ---
 st.subheader("Джерела трафіку")
 source_agg = df.groupby(['date', 'source']).agg({'sessions': 'sum'}).reset_index()
 
@@ -124,17 +102,13 @@ area = (
     .interactive()
 )
 st.altair_chart(area, use_container_width=True)
-
-# --- Пристрої ---
 st.subheader("Сегментація за пристроями")
 device_agg = df.groupby('device_category').agg({
     'sessions': 'sum',
     'users': 'sum',
     'pageviews': 'sum'
 }).reset_index()
-
 st.table(device_agg)
-
 bar = (
     alt.Chart(device_agg)
     .mark_bar()
@@ -146,21 +120,15 @@ bar = (
     )
 )
 st.altair_chart(bar, use_container_width=True)
-
-# --- Кореляційний аналіз без matplotlib ---
 st.subheader("Кореляційний аналіз показників (без matplotlib)")
-
 num_cols = ['sessions', 'users', 'pageviews', 'bounce_rate', 'avg_session_duration']
 corr = df[num_cols].corr().round(3)
-
 st.dataframe(corr)
-
 corr_long = (
     corr.reset_index()
         .melt(id_vars='index', var_name='var2', value_name='corr')
         .rename(columns={'index': 'var1'})
 )
-
 heat = (
     alt.Chart(corr_long)
     .mark_rect()
@@ -171,7 +139,6 @@ heat = (
         tooltip=['var1','var2','corr']
     )
 )
-
 text = (
     alt.Chart(corr_long)
     .mark_text(size=12)
@@ -182,9 +149,7 @@ text = (
         color=alt.condition(alt.datum.corr > 0.5, alt.value('black'), alt.value('black'))
     )
 )
-
 st.altair_chart(heat + text, use_container_width=True)
-
 st.caption("""
 **Інтерпретація:**  
 - corr близько 1 → сильна позитивна залежність  
