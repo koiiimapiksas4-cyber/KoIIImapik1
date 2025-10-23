@@ -137,24 +137,52 @@ bar = (
 )
 st.altair_chart(bar, use_container_width=True)
 
-# --- Кореляційний аналіз ---
-st.subheader("Кореляційний аналіз показників")
+# --- Кореляційний аналіз без matplotlib ---
+st.subheader("Кореляційний аналіз показників (без matplotlib)")
+
+# Вибір числових колонок для кореляції
 num_cols = ['sessions', 'users', 'pageviews', 'bounce_rate', 'avg_session_duration']
 corr = df[num_cols].corr().round(3)
-st.dataframe(corr.style.background_gradient(axis=None))
 
-corr_long = corr.reset_index().melt(id_vars='index', var_name='var2', value_name='corr').rename(columns={'index': 'var1'})
+# Показуємо просту таблицю (без стилю)
+st.dataframe(corr)
+
+# Підготовка даних для теплової карти Altair
+corr_long = (
+    corr.reset_index()
+        .melt(id_vars='index', var_name='var2', value_name='corr')
+        .rename(columns={'index': 'var1'})
+)
+
+# Altair heatmap
 heat = (
     alt.Chart(corr_long)
     .mark_rect()
     .encode(
         x='var1:N',
         y='var2:N',
-        color=alt.Color('corr:Q', scale=alt.Scale(domain=[-1, 1])),
-        tooltip=['var1', 'var2', 'corr']
+        color=alt.Color('corr:Q', scale=alt.Scale(domain=[-1,1], scheme='redyellowblue')),
+        tooltip=['var1','var2','corr']
     )
 )
-text = alt.Chart(corr_long).mark_text(size=12).encode(x='var1:N', y='var2:N', text='corr:Q')
+
+# Додаємо числа поверх heatmap
+text = (
+    alt.Chart(corr_long)
+    .mark_text(size=12)
+    .encode(
+        x='var1:N',
+        y='var2:N',
+        text='corr:Q',
+        color=alt.condition(alt.datum.corr > 0.5, alt.value('black'), alt.value('black'))
+    )
+)
+
 st.altair_chart(heat + text, use_container_width=True)
 
-st.caption("Якщо хочеш — я можу додати автооновлення CSV (кожні X хвилин) або підключення до Google Analytics API.")
+st.caption("""
+**Інтерпретація:**  
+- corr близько 1 → сильна позитивна залежність  
+- corr близько -1 → сильна негативна залежність  
+- corr близько 0 → лінійної залежності немає
+""")
