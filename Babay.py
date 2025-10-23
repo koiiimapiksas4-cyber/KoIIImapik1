@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import altair as alt
 import os
+import glob
 
 st.set_page_config(layout="wide", page_title="Автоматична аналітика трафіку")
 
@@ -38,18 +39,22 @@ def generate_sample_csv(n_days=180):
             })
     return pd.DataFrame(rows)
 
-# --- Автоматичне завантаження ---
+# --- Автоматичне завантаження CSV ---
 @st.cache_data
-def load_data():
-    if os.path.exists("data.csv"):
-        st.success("✅ Завантажено локальний файл data.csv")
-        df = pd.read_csv("data.csv")
+def load_data_auto():
+    # Шукаємо всі CSV у папці
+    csv_files = glob.glob("*.csv")
+    if csv_files:
+        # Беремо останній за датою створення
+        latest_file = max(csv_files, key=os.path.getctime)
+        st.success(f"✅ Завантажено CSV-файл: {latest_file}")
+        df = pd.read_csv(latest_file)
     else:
-        st.warning("⚠️ Файл data.csv не знайдено — згенеровано прикладні дані")
+        st.warning("⚠️ CSV файлів не знайдено — згенеровано прикладні дані")
         df = generate_sample_csv(180)
     return df
 
-df = load_data()
+df = load_data_auto()
 
 # --- Попередня обробка ---
 df.columns = [c.strip() for c in df.columns]
@@ -140,21 +145,17 @@ st.altair_chart(bar, use_container_width=True)
 # --- Кореляційний аналіз без matplotlib ---
 st.subheader("Кореляційний аналіз показників (без matplotlib)")
 
-# Вибір числових колонок для кореляції
 num_cols = ['sessions', 'users', 'pageviews', 'bounce_rate', 'avg_session_duration']
 corr = df[num_cols].corr().round(3)
 
-# Показуємо просту таблицю (без стилю)
 st.dataframe(corr)
 
-# Підготовка даних для теплової карти Altair
 corr_long = (
     corr.reset_index()
         .melt(id_vars='index', var_name='var2', value_name='corr')
         .rename(columns={'index': 'var1'})
 )
 
-# Altair heatmap
 heat = (
     alt.Chart(corr_long)
     .mark_rect()
@@ -166,7 +167,6 @@ heat = (
     )
 )
 
-# Додаємо числа поверх heatmap
 text = (
     alt.Chart(corr_long)
     .mark_text(size=12)
