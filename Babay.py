@@ -42,7 +42,7 @@ def load_data_auto():
     csv_files = glob.glob("*.csv")
     if csv_files:
         latest_file = max(csv_files, key=os.path.getctime)
-        st.success(f"✅ Завантажено CSV-файл: {latest_file}")
+        st.success
         df = pd.read_csv(latest_file)
     else:
         df = generate_sample_csv_file()
