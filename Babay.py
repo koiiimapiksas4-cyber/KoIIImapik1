@@ -171,4 +171,4 @@ device_agg = df.groupby('device_category').agg({
     'users':'sum',
     'pageviews':'sum'
 }).reset_index().sort_values('sessions', ascending=False)
-st.table(device_agg)_
+st.table(device_agg)
