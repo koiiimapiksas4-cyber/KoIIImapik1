@@ -5,7 +5,7 @@ import altair as alt
 import os
 import glob
 from datetime import datetime, timedelta
-from streamlit_autorefresh import st_autorefresh
+from st.cache_data(ttl=60) import st.cache_data
 
 st.set_page_config(layout="wide", page_title="Автоматична аналітика трафіку")
 
