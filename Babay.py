@@ -5,14 +5,10 @@ import altair as alt
 import os
 import glob
 from datetime import datetime, timedelta
-from st.cache_data(ttl=60) import st.cache_data
 
 st.set_page_config(layout="wide", page_title="Автоматична аналітика трафіку")
 
 st.title("📊 Аналітика трафіку вебсайту (автоматичне завантаження даних)")
-
-# --- Автооновлення сторінки кожні 60 секунд ---
-count = st_autorefresh(interval=60*1000, limit=None, key="data_refresh")
 
 # --- Функція генерації CSV у файл ---
 def generate_sample_csv_file(filename="sample_data.csv", n_days=10):
@@ -51,8 +47,8 @@ def generate_sample_csv_file(filename="sample_data.csv", n_days=10):
     st.info(f"⚠️ Файл {filename} не знайдено — згенеровано прикладні дані")
     return df
 
-# --- Завантаження CSV з автооновленням ---
-@st.cache_data(ttl=60)
+# --- Завантаження CSV з автооновленням через кеш ---
+@st.cache_data(ttl=60)  # TTL = 60 секунд, дані оновлюються автоматично
 def load_data_auto():
     csv_files = glob.glob("*.csv")
     if csv_files:
