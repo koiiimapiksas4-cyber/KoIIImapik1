@@ -4,54 +4,63 @@ import numpy as np
 import altair as alt
 import os
 import glob
+from datetime import datetime, timedelta
+from streamlit_autorefresh import st_autorefresh
 
 st.set_page_config(layout="wide", page_title="Автоматична аналітика трафіку")
 
 st.title("📊 Аналітика трафіку вебсайту (автоматичне завантаження даних)")
 
-# --- Функція генерації даних ---
-@st.cache_data
-def generate_sample_csv(n_days=180):
-    rng = pd.date_range(end=pd.Timestamp.today(), periods=n_days, freq='D')
+# --- Автооновлення сторінки кожні 60 секунд ---
+count = st_autorefresh(interval=60*1000, limit=None, key="data_refresh")
+
+# --- Функція генерації CSV у файл ---
+def generate_sample_csv_file(filename="sample_data.csv", n_days=10):
+    start_date = datetime.today() - timedelta(days=n_days-1)
+    dates = [start_date + timedelta(days=i) for i in range(n_days)]
+    
     sources = ['organic', 'direct', 'referral', 'social', 'email']
     devices = ['desktop', 'mobile', 'tablet']
+    
     rows = []
     np.random.seed(42)
-    for d in rng:
-        base = 1000 + int(200 * np.sin((d.dayofyear / 365.0) * 2 * np.pi))
+    
+    for d in dates:
         for s in sources:
-            sessions = max(0, int(np.random.poisson(base * (0.2 if s == 'social' else 0.25))))
+            sessions = max(0, int(np.random.poisson(1000)))
             users = int(sessions * (0.9 - 0.1 * np.random.rand()))
             pageviews = int(sessions * (1.5 + 0.5 * np.random.rand()))
             bounce_rate = np.clip(0.3 + 0.2 * np.random.rand(), 0, 1)
             avg_session_duration = abs(np.random.normal(120, 30))
             device = np.random.choice(devices, p=[0.55, 0.35, 0.10])
+            
             rows.append({
-                "date": d.date().isoformat(),
+                "date": d.strftime("%Y-%m-%d"),
                 "sessions": sessions,
                 "users": users,
                 "pageviews": pageviews,
                 "bounce_rate": round(bounce_rate, 3),
                 "avg_session_duration": int(avg_session_duration),
                 "source": s,
-                "medium": "organic" if s == 'organic' else ("social" if s == 'social' else "referral"),
+                "medium": "organic" if s=="organic" else ("social" if s=="social" else "referral"),
                 "device_category": device
             })
-    return pd.DataFrame(rows)
+    
+    df = pd.DataFrame(rows)
+    df.to_csv(filename, index=False)
+    st.info(f"⚠️ Файл {filename} не знайдено — згенеровано прикладні дані")
+    return df
 
-# --- Автоматичне завантаження CSV ---
-@st.cache_data
+# --- Завантаження CSV з автооновленням ---
+@st.cache_data(ttl=60)
 def load_data_auto():
-    # Шукаємо всі CSV у папці
     csv_files = glob.glob("*.csv")
     if csv_files:
-        # Беремо останній за датою створення
         latest_file = max(csv_files, key=os.path.getctime)
         st.success(f"✅ Завантажено CSV-файл: {latest_file}")
         df = pd.read_csv(latest_file)
     else:
-        st.warning("⚠️ CSV файлів не знайдено — згенеровано прикладні дані")
-        df = generate_sample_csv(180)
+        df = generate_sample_csv_file()
     return df
 
 df = load_data_auto()
