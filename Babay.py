@@ -120,7 +120,7 @@ bar = (
     )
 )
 st.altair_chart(bar, use_container_width=True)
-st.subheader("Кореляційний аналіз показників (без matplotlib)")
+st.subheader("Кореляційний аналіз показників")
 num_cols = ['sessions', 'users', 'pageviews', 'bounce_rate', 'avg_session_duration']
 corr = df[num_cols].corr().round(3)
 st.dataframe(corr)
